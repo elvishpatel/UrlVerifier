@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>🔍 URL Verifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 30px 25px;
+      width: 95%;
+      max-width: 550px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 0.8s ease-in;
+    }
+
+    h2 {
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 25px;
+      font-size: 24px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 18px;
+      margin: 12px 0;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      color: white;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 2px #00ffd0;
+    }
+
+    input::placeholder {
+      color: #bbb;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      background: #00ffd0;
+      color: #000;
+      cursor: pointer;
+      margin-top: 10px;
+      position: relative;
+    }
+
+    button:hover {
+      background: #00c4a8;
+      transform: scale(1.03);
+    }
+
+    .spinner {
+      display: none;
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(0, 0, 0, 0.3);
+      border-top: 3px solid black;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .result {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 12px;
+      white-space: pre-line;
+      font-size: 14px;
+      color: #eee;
+      border-left: 4px solid #00ffd0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .safe {
+      background: #4caf50;
+      color: #fff;
+    }
+
+    .warn {
+      background: #ff9800;
+      color: #fff;
+    }
+
+    .danger {
+      background: #f44336;
+      color: #fff;
+    }
+
+    .tags {
+      margin-top: 15px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #444;
+      padding: 5px 10px;
+      border-radius: 6px;
+      margin: 4px;
+      font-size: 13px;
+      color: #fff;
+    }
+
+    .tag.phishing {
+      background: #d32f2f;
+    }
+
+    .tag.malware {
+      background: #e64a19;
+    }
+
+    .tag.lowtrust {
+      background: #fbc02d;
+      color: #000;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>🔍 URL Verifier</h2>
+    <p style="text-align: center; font-size: 14px; color: #ddd; margin-top: -15px; margin-bottom: 20px;">
+      Enter any URL to check its safety using multiple security checks including VirusTotal, Google Safe Browsing, SSL
+      info, scam keyword scanning, and more.
+    </p>
+    <input id="urlInput" type="text" placeholder="Paste URL here…" />
+    <button id="checkBtn">Check URL<span class="spinner"></span></button>
+    <div id="results" class="result"></div>
+    <div id="tags" class="tags" style="text-align:center;"></div>
+    <div style="font-size: 13px; color: #ffa; margin-top: 20px; text-align: center;">
+      ⚠️ This tool is for informational purposes only and does not guarantee 100% accuracy. Always avoid clicking on
+      suspicious links.
+    </div>
+    <footer style="text-align:center; font-size: 12px; color: #aaa; margin-top: 25px;">
+      &copy; 2025 URL Verifier by Elvish | Stay Safe, Stay Smart
+    </footer>
+  </div>
+
+  <script>
+    const safeKey = 'AIzaSyAium1GdzXqjOnItxaLKcnpWQQ-2V68rmo';
+    const urlscanKey = '019796bd-929b-73cb-a5ff-9588c2e7d66e';
+
+
+    const btn = document.getElementById('checkBtn');
+    const spinner = btn.querySelector('.spinner');
+    const outEl = document.getElementById('results');
+    const tagEl = document.getElementById('tags');
+
+    btn.onclick = async () => {
+      let url = document.getElementById('urlInput').value.trim();
+      if (!url) return alert('Enter a URL.');
+      if (!/^https?:\/\//.test(url)) url = 'http://' + url;
+
+      btn.disabled = true;
+      spinner.style.display = 'inline-block';
+      outEl.textContent = 'Please wait 15-20 seconds while we analyze the url ...';
+      tagEl.innerHTML = '';
+
+      const lines = [], unsafeFlags = [], tags = [];
+      lines.push(`🌐 URL: ${url}`);
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
+      const proto = new URL(url).protocol;
+      lines.push(`✔ HTTPS: ${proto === 'https:' ? 'Yes' : 'No'}`);
+
+      try {
+        const sslRes = await fetch(`https://api.ssllabs.com/api/v3/analyze?host=${hostname}`);
+        const sslJson = await sslRes.json();
+        const sslStatus = sslJson.endpoints?.[0]?.grade || 'Unknown';
+
+        lines.push(`🔒 SSL Labs Grade: ${sslStatus}`);
+        if (['B', 'C', 'D', 'E', 'F', 'T'].includes(sslStatus)) {
+          unsafeFlags.push('weak');
+        }
+      } catch {
+        lines.push('🔒 SSL Check Failed (SSL Labs)');
+        unsafeFlags.push('weak');
+      }
+
+      // Google Safe Browsing
+      try {
+        const sb = await fetch(`https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${safeKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client: { clientId: 'verifier', clientVersion: '1.0' },
+            threatInfo: {
+              threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING'],
+              platformTypes: ['ANY_PLATFORM'],
+              threatEntryTypes: ['URL'],
+              threatEntries: [{ url }]
+            }
+          })
+        }).then(r => r.json());
+        const sbv = sb.matches?.map(m => m.threatType).join(', ') || 'Clean';
+        lines.push(`🛡 Safe Browsing: ${sbv}`);
+        if (sb.matches) {
+          unsafeFlags.push('sb');
+          tags.push('phishing');
+        }
+      } catch {
+        lines.push('🛡 Safe Browsing: failed');
+      }
+
+      // urlscan.io scan and result
+      try {
+        const submit = await fetch("https://api.urlscan.io/api/v1/scan/", {
+          method: "POST",
+          headers: {
+            "API-Key": urlscanKey,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ url: url, visibility: "public" })
+        }).then(r => r.json());
+
+        if (!submit.uuid) {
+          lines.push("❌ Submission to urlscan.io failed (no UUID returned)");
+          throw new Error("No UUID from urlscan");
+        }
+
+        const uuid = submit.uuid;
+
+        // Wait and then fetch results
+        await new Promise(res => setTimeout(res, 20000)); // 20s delay
+
+        const result = await fetch(`https://api.urlscan.io/api/v1/result/${uuid}/?withVerdicts=true`)
+          .then(r => r.json());
+
+        const verdictData = result?.verdicts?.overall;
+        const verdictScore = typeof verdictData?.score === 'number' ? verdictData.score : 'Unavailable';
+        const verdictCats = Array.isArray(verdictData?.categories) ? verdictData.categories.join(', ') : 'None';
+
+        lines.push(`🔍 Detected Threats: ${verdictCats}`);
+
+        if (verdictScore !== 'Unavailable' && verdictScore > 0) {
+          unsafeFlags.push('urlscan');
+          tags.push('phishing');
+        }
+
+      } catch (err) {
+        console.error(err);
+        lines.push("urlscan.io: ❌ Failed");
+      }
+
+      try {
+        const html = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`).then(r => r.text());
+        const kws = ['verify account', 'free gift', 'reset password', 'click here', 'login now', 'limited offer', 'congratulations', 'winner', 'you won', 'your prize', 'claim reward', 'urgent action', 'act now', 'click to win', 'confirm your email', 'account suspended', 'free iphone', 'urgent verification', 'security alert', 'bank update', 'unusual activity', 'paypal alert', 'free money', 'you have been selected', 'redeem code', 'click link', 'official notice', 'your order', 'billing problem', 'account issue', 'click below', 'fake invoice', 'update required', 'final notice', 'security check', 'confirm identity', 'your package', 'delivery failed', 'restricted access', 'your refund', 'refund pending', 'password expired', 'reset immediately', 'you’re eligible', 'zero cost', 'free access', 'trial offer', 'get started now', 'activate now', 'reactivate account', 'unlock reward', 'payment needed', 'suspicious login', 'you’ve been hacked', 'confirm login', 'scan here', 'access blocked', 'confirm your card'];
+        const hits = kws.filter(w => html.toLowerCase().includes(w));
+        lines.push(`⚠️ Scam Keywords: ${hits.length ? hits.join(', ') : 'None found'}`);
+        lines.push(`🔁 Redirect Meta: ${html.includes('http-equiv="refresh"') ? 'Yes' : 'No'}`);
+      } catch {
+        lines.push('⚠️ Scam scan failed');
+      }
+
+      // Final Verdict
+      let badge = 'safe', verdict = '✅ Looks Safe';
+
+      const score = {
+        danger: 0,
+        warn: 0
+      };
+
+      unsafeFlags.forEach(flag => {
+        if (flag === 'sb' || flag === 'urlscan') score.danger++;
+        if (flag === 'weak' && unsafeFlags.length > 1) score.warn++;
+      });
+
+      // Decision based on accumulated risk
+      if (score.danger >= 2) {
+        badge = 'danger';
+        verdict = '❌ Dangerous (Multiple Threats Detected)';
+      } else if (score.danger === 1 || score.warn >= 2) {
+        badge = 'warn';
+        verdict = '⚠️ Risky (Some Issues Found)';
+      } else if (score.warn === 1) {
+        badge = 'warn';
+        verdict = '⚠️ Minor Risk (Weak SSL or Suspicious Elements)';
+      }
+
+
+      lines.push(`\nFinal Verdict: <span class="badge ${badge}">${verdict}</span>`);
+      outEl.innerHTML = lines.join('\n');
+
+      if (tags.length > 0) {
+        tagEl.innerHTML = tags.map(t => `<span class="tag ${t}">${t.replace(/^\w/, c => c.toUpperCase())}</span>`).join('');
+      }
+
+      btn.disabled = false;
+      spinner.style.display = 'none';
+    };
+  </script>
+</body>
+
+</html>
