@@ -6,7 +6,7 @@
 
 ## 🌐 Live Demo
 
-[🔗 Try it here](#) https://url-verifier-by-elvish.netlify.app/
+🔗 Try it here : https://url-verifier-by-elvish.netlify.app/
 
 ---
 
@@ -61,10 +61,29 @@
 
 ---
 
-## ⚙️ How to Use Locally
+##  🔐 Notes
+No user data is stored or sent to any server.
 
-1. Clone the repo:
+This tool uses public APIs to check threats.
 
-```bash
-git clone https://github.com/elvish-patel/url-verifier.git
-cd url-verifier
+⚠️ It’s meant for educational and personal use — not guaranteed to catch all threats.
+
+---
+
+## 🧠 Keywords Scanned
+verify account, click here, login now, your prize, urgent, free gift, reset password, update required, claim reward, bank alert, you’ve been hacked, and 40+ more
+
+---
+
+##  👨‍💻 Creator
+Elvish Patel
+
+---
+
+## 📄 License
+This project is open-source and licensed under the MIT License.
+
+---
+
+## ✨ Tip
+Always double-check suspicious URLs — don’t blindly click random links in emails, messages, or social media posts. This tool is one extra layer of protection.
