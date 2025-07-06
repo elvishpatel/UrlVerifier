@@ -34,7 +34,7 @@
 
 ## 🚀 How It Works
 
-1. You paste a URL (e.g., `https://free-gift-example.com`)
+1. You paste a URL (e.g., `https://ortopediaspro.cl/galicia/`)
 2. The app checks:
    - If it’s **HTTPS-enabled**
    - Its **SSL Grade** using SSL Labs
@@ -57,7 +57,7 @@
 | URL | Verdict |
 |-----|---------|
 | `https:/google.com` | ✅ Looks Safe |
-| `http://[free-prize123.ru](https://ortopediaspro.cl/galicia/` | ❌ Dangerous (Multiple Threats Detected) |
+| `https://ortopediaspro.cl/galicia/` | ❌ Dangerous (Multiple Threats Detected) |
 
 ---
 
