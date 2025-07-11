@@ -184,16 +184,27 @@
   <div class="container">
     <h2>🔍 URL Verifier</h2>
     <p style="text-align: center; font-size: 14px; color: #ddd; margin-top: -15px; margin-bottom: 20px;">
-      Enter any URL to check its safety using multiple security checks including VirusTotal, Google Safe Browsing, SSL
-      info, scam keyword scanning, and more.
+      Enter any URL to check its safety using multiple security checks including Google Safe Browsing, scam keyword
+      scanning, iframe/script usage, location data, and more.
+    </p><Br>
+    <p style="text-align: center; font-size: 14px; color: #ddd; margin-top: -10px;">
+      Quickly check any link for malicious indicators like phishing, unsafe scripts, spoofing, and scam traps.
     </p>
     <input id="urlInput" type="text" placeholder="Paste URL here…" />
     <button id="checkBtn">Check URL<span class="spinner"></span></button>
     <div id="results" class="result"></div>
     <div id="tags" class="tags" style="text-align:center;"></div>
     <div style="font-size: 13px; color: #ffa; margin-top: 20px; text-align: center;">
-      ⚠️ This tool is for informational purposes only and does not guarantee 100% accuracy. Always avoid clicking on
-      suspicious links.
+      ⚠️ This tool is for informational purposes only and does not guarantee 100% accuracy.
+    </div>
+    <div class="footer" style="text-align: center; margin-top: 30px; color: #aaa; font-size: 13px;">
+      Developed with ❤️ by <strong>Elvish Patel</strong><br>
+      <div style="margin-top: 10px;">
+        <a href="https://github.com/elvishpatel/UrlVerifier/" target="_blank" title="View on GitHub">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub Repo"
+            style="width: 28px; height: 28px; filter: invert(1); margin-top: 8px;" />
+        </a>
+      </div>
     </div>
     <footer style="text-align:center; font-size: 12px; color: #aaa; margin-top: 25px;">
       &copy; 2025 URL Verifier by Elvish | Stay Safe, Stay Smart
@@ -201,9 +212,8 @@
   </div>
 
   <script>
-    const safeKey = 'GOOGLE_SAFE_BROWSING_API_KEY';
-    const urlscanKey = 'URLSCAN.IO_API_KEY';
-
+    const safeKey = 'SAFE_BROWSING_API';
+    const urlscanKey = 'URLSCAN_IO_API';
 
     const btn = document.getElementById('checkBtn');
     const spinner = btn.querySelector('.spinner');
@@ -220,24 +230,75 @@
       outEl.textContent = 'Please wait 15-20 seconds while we analyze the url ...';
       tagEl.innerHTML = '';
 
+
       const lines = [], unsafeFlags = [], tags = [];
       lines.push(`🌐 URL: ${url}`);
       const hostname = new URL(url).hostname.replace(/^www\./, '');
       const proto = new URL(url).protocol;
-      lines.push(`✔ HTTPS: ${proto === 'https:' ? 'Yes' : 'No'}`);
+      if (proto === 'https:') {
+        lines.push('✔ HTTPS: Yes');
+      } else {
+        lines.push('🚫 <span style="color:#f44336;font-weight:bold;">HTTPS: No (Insecure - avoid using HTTP)</span>');
+        unsafeFlags.push('insecure');
+        tags.push('lowtrust');
+      }
 
+      // Hyphen spoofing / brand imitation check
+      const spoofKeywords = [
+        'paypal', 'amazon', 'bank', 'allegro', 'login', 'secure', 'support', 'verify', 'apple', 'microsoft',
+        'google', 'outlook', 'facebook', 'instagram', 'whatsapp', 'telegram', 'netflix', 'linkedin', 'dropbox',
+        'icloud', 'steam', 'epicgames', 'twitter', 'twitch', 'snapchat', 'binance', 'coinbase', 'kraken',
+        'wallet', 'blockchain', 'crypto', 'recovery', 'account', 'signin', 'update', 'authentication',
+        'admin', 'reset', 'unlock', 'verifyaccount', 'security', 'purchase', 'payment', 'transaction'
+      ];
+      const domainParts = hostname.split(/[.-]/);
+      const hyphenImpersonation = spoofKeywords.some(k => domainParts.includes(k) && hostname.includes('-'));
+      if (hyphenImpersonation) {
+        lines.push('🚩 Potential brand spoofing with hyphenated domain');
+        unsafeFlags.push('spoof');
+        tags.push('phishing');
+      }
+
+      // Suspicious path check
+      const path = new URL(url).pathname;
+      if (/[\w\d]{6,}-[\w\d]{6,}/.test(path) || path.length > 40) {
+        lines.push('🚩 Suspicious URL path structure');
+        unsafeFlags.push('suspiciousPath');
+      }
+
+      // Unicode or homoglyph check
+      if (/[^a-z0-9.-]/i.test(hostname)) {
+        lines.push('🚩 Non-standard characters in domain (possible homoglyph)');
+        unsafeFlags.push('homoglyph');
+      }
+
+      // Detect real redirect (HTTP 3xx)
+      let redirectedURL = null;
       try {
-        const sslRes = await fetch(`https://api.ssllabs.com/api/v3/analyze?host=${hostname}`);
-        const sslJson = await sslRes.json();
-        const sslStatus = sslJson.endpoints?.[0]?.grade || 'Unknown';
+        const html = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`).then(r => r.text());
 
-        lines.push(`🔒 SSL Labs Grade: ${sslStatus}`);
-        if (['B', 'C', 'D', 'E', 'F', 'T'].includes(sslStatus)) {
-          unsafeFlags.push('weak');
+        // ✅ INSERT HERE
+        const jsRedirectMatch = html.match(/window\.location(?:\.href|\.replace)?\s*=\s*['"]([^'"]+)['"]/i);
+        const metaRefreshMatch = html.match(/http-equiv\s*=\s*["']refresh["'][^>]*content\s*=\s*["'][^;]+;\s*url=([^"']+)/i);
+
+        let foundRedirect = null;
+
+        if (jsRedirectMatch) {
+          foundRedirect = jsRedirectMatch[1];
+          lines.push(`🔁 JS Redirect To: ${foundRedirect}`);
+          unsafeFlags.push('redirect');
+          tags.push('phishing');
+        } else if (metaRefreshMatch) {
+          foundRedirect = metaRefreshMatch[1];
+          lines.push(`🔁 Meta Redirect To: ${foundRedirect}`);
+          unsafeFlags.push('redirect');
+          tags.push('phishing');
+        } else {
+          lines.push(`🔁 No Redirect Detected`);
         }
-      } catch {
-        lines.push('🔒 SSL Check Failed (SSL Labs)');
-        unsafeFlags.push('weak');
+      } catch (e) {
+        console.warn('Redirect check failed:', e);
+        lines.push('🔁 Redirect check failed');
       }
 
       // Google Safe Browsing
@@ -265,7 +326,7 @@
         lines.push('🛡 Safe Browsing: failed');
       }
 
-      // urlscan.io scan and result
+      // urlscan.io verdict
       try {
         const submit = await fetch("https://api.urlscan.io/api/v1/scan/", {
           method: "POST",
@@ -276,59 +337,77 @@
           body: JSON.stringify({ url: url, visibility: "public" })
         }).then(r => r.json());
 
-        if (!submit.uuid) {
-          lines.push("❌ Submission to urlscan.io failed (no UUID returned)");
-          throw new Error("No UUID from urlscan");
-        }
-
         const uuid = submit.uuid;
+        await new Promise(res => setTimeout(res, 20000));
 
-        // Wait and then fetch results
-        await new Promise(res => setTimeout(res, 20000)); // 20s delay
-
-        const result = await fetch(`https://api.urlscan.io/api/v1/result/${uuid}/?withVerdicts=true`)
-          .then(r => r.json());
-
+        const result = await fetch(`https://api.urlscan.io/api/v1/result/${uuid}/?withVerdicts=true`).then(r => r.json());
         const verdictData = result?.verdicts?.overall;
-        const verdictScore = typeof verdictData?.score === 'number' ? verdictData.score : 'Unavailable';
+        const verdictScore = verdictData?.score ?? 'Unavailable';
         const verdictCats = Array.isArray(verdictData?.categories) ? verdictData.categories.join(', ') : 'None';
 
         lines.push(`🔍 Detected Threats: ${verdictCats}`);
-
         if (verdictScore !== 'Unavailable' && verdictScore > 0) {
           unsafeFlags.push('urlscan');
           tags.push('phishing');
         }
-
-      } catch (err) {
-        console.error(err);
+      } catch {
         lines.push("urlscan.io: ❌ Failed");
       }
 
+      // Scam Keywords, Redirect, iframe/script count, IP info
       try {
         const html = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`).then(r => r.text());
+
         const kws = ['verify account', 'free gift', 'reset password', 'click here', 'login now', 'limited offer', 'congratulations', 'winner', 'you won', 'your prize', 'claim reward', 'urgent action', 'act now', 'click to win', 'confirm your email', 'account suspended', 'free iphone', 'urgent verification', 'security alert', 'bank update', 'unusual activity', 'paypal alert', 'free money', 'you have been selected', 'redeem code', 'click link', 'official notice', 'your order', 'billing problem', 'account issue', 'click below', 'fake invoice', 'update required', 'final notice', 'security check', 'confirm identity', 'your package', 'delivery failed', 'restricted access', 'your refund', 'refund pending', 'password expired', 'reset immediately', 'you’re eligible', 'zero cost', 'free access', 'trial offer', 'get started now', 'activate now', 'reactivate account', 'unlock reward', 'payment needed', 'suspicious login', 'you’ve been hacked', 'confirm login', 'scan here', 'access blocked', 'confirm your card'];
+
         const hits = kws.filter(w => html.toLowerCase().includes(w));
         lines.push(`⚠️ Scam Keywords: ${hits.length ? hits.join(', ') : 'None found'}`);
-        lines.push(`🔁 Redirect Meta: ${html.includes('http-equiv="refresh"') ? 'Yes' : 'No'}`);
-      } catch {
-        lines.push('⚠️ Scam scan failed');
+
+        const iframeMatches = html.match(/<iframe[^>]*>/gi) || [];
+        const scriptMatches = html.match(/<script[^>]*>/gi) || [];
+
+        const iframeCount = iframeMatches.length;
+        const scriptCount = scriptMatches.length;
+
+        // Optionally count external scripts too
+        const externalScriptCount = scriptMatches.filter(tag => tag.includes('src=')).length;
+
+        lines.push(`🧱 Iframes: ${iframeCount}, Scripts: ${scriptCount} (External: ${externalScriptCount})`);
+
+        // Adjust thresholds if needed
+        if (iframeCount >= 2 || scriptCount >= 20 || externalScriptCount >= 10) {
+          lines.push(`🚩 Suspicious use of multiple scripts or iframes`);
+          unsafeFlags.push('heavyScripts');
+          tags.push('lowtrust');
+        }
+
+        const ipLookup = await fetch(`https://dns.google/resolve?name=${hostname}&type=A`).then(r => r.json());
+        const ip = ipLookup?.Answer?.[0]?.data;
+        if (ip) {
+          const ipInfo = await fetch(`https://ipapi.co/${ip}/json/`).then(r => r.json());
+          lines.push(`🌍 Hosting Country: ${ipInfo.country_name || 'Unknown'}`);
+          if (['Russia', 'Iran', 'North Korea', 'China', 'Belarus', 'Pakistan', 'Vietnam', 'Nigeria', 'Syria', 'Ukraine', 'Turkey', 'Brazil']
+            .includes(ipInfo.country_name)) {
+            unsafeFlags.push('suspiciousCountry');
+            tags.push('lowtrust');
+          }
+        }
+      } catch (err) {
+        console.warn('HTML/IP analysis failed:', err);
+        lines.push('HTML/Location scan failed');
       }
 
-      // Final Verdict
+      // Final verdict
       let badge = 'safe', verdict = '✅ Looks Safe';
-
-      const score = {
-        danger: 0,
-        warn: 0
-      };
+      const score = { danger: 0, warn: 0 };
 
       unsafeFlags.forEach(flag => {
-        if (flag === 'sb' || flag === 'urlscan') score.danger++;
-        if (flag === 'weak' && unsafeFlags.length > 1) score.warn++;
+        if (['sb', 'urlscan', 'spoof', 'badTLD', 'homoglyph', 'insecure', 'redirect'].includes(flag)) score.danger++;
+        if (['heavyScripts', 'suspiciousCountry', 'suspiciousPath'].includes(flag)) score.warn++;
       });
 
-      // Decision based on accumulated risk
+
+      // Update verdict based on score
       if (score.danger >= 2) {
         badge = 'danger';
         verdict = '❌ Dangerous (Multiple Threats Detected)';
@@ -337,14 +416,13 @@
         verdict = '⚠️ Risky (Some Issues Found)';
       } else if (score.warn === 1) {
         badge = 'warn';
-        verdict = '⚠️ Minor Risk (Weak SSL or Suspicious Elements)';
+        verdict = '⚠️ Minor Risk (Suspicious Elements)';
       }
 
-
       lines.push(`\nFinal Verdict: <span class="badge ${badge}">${verdict}</span>`);
-      outEl.innerHTML = lines.join('\n');
 
-      if (tags.length > 0) {
+      outEl.innerHTML = lines.join('<br>');
+      if (tags.length) {
         tagEl.innerHTML = tags.map(t => `<span class="tag ${t}">${t.replace(/^\w/, c => c.toUpperCase())}</span>`).join('');
       }
 
